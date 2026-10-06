@@ -1,0 +1,62 @@
+name: Update and test
+
+on:
+  schedule:
+    - cron: "17 5 * * *"  # daily
+  workflow_dispatch:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    name: Follow PyPI, build and test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Point the formula at the latest xping and certifi on PyPI
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          python3 - <<'PY'
+          import json, re, urllib.request
+          path = "Formula/xping.rb"
+          text = open(path).read()
+          def sdist(name):
+              with urllib.request.urlopen(f"https://pypi.org/pypi/{name}/json", timeout=30) as r:
+                  data = json.load(r)
+              url = next(u for u in data["urls"] if u["packagetype"] == "sdist")
+              return url["url"], url["digests"]["sha256"]
+          url, sha = sdist("xping")
+          text = re.sub(r'(\n  url ")[^"]+(")', rf"\g<1>{url}\g<2>", text, count=1)
+          text = re.sub(r'(\n  sha256 ")[^"]+(")', rf"\g<1>{sha}\g<2>", text, count=1)
+          url, sha = sdist("certifi")
+          text = re.sub(r'(resource "certifi" do\n    url ")[^"]+(")', rf"\g<1>{url}\g<2>", text)
+          text = re.sub(r'(resource "certifi" do\n    url "[^"]+"\n    sha256 ")[^"]+(")', rf"\g<1>{sha}\g<2>", text)
+          open(path, "w").write(text)
+          PY
+          git diff --stat
+
+      - name: Build and test the formula
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+          HOMEBREW_NO_INSTALL_CLEANUP: "1"
+        run: |
+          brew tap mehaskari/tap "$GITHUB_WORKSPACE"
+          brew style mehaskari/tap/xping
+          brew install --build-from-source mehaskari/tap/xping
+          brew test mehaskari/tap/xping
+          xping --version
+
+      - name: Commit the update
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          git diff --quiet && { echo "already up to date"; exit 0; }
+          version=$(sed -nE 's#.*/xping-([0-9.]+)\.tar\.gz".*#\1#p' Formula/xping.rb | head -1)
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "xping $version"
+          git push
