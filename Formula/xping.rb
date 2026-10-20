@@ -3,8 +3,8 @@ class Xping < Formula
 
   desc "Beautiful CLI network diagnostics: ping, trace, mtr, DNS, TLS, HTTP and more"
   homepage "https://mehaskari.github.io/xping/"
-  url "https://files.pythonhosted.org/packages/f9/a8/c85f8624033ac98a14739136353c1b6c8c62cce9f0dddf9405236f3e1dd3/xping-1.6.0.tar.gz"
-  sha256 "625d89b8e97a3d69ccd351b898f4a983c8b58edc04f84bd05f7fc77dc542229d"
+  url "https://files.pythonhosted.org/packages/c7/cd/d749553533d59b29c9a7133c5d0cd172a50d926a803ca3afd67c1b97cbdf/xping-1.6.1.tar.gz"
+  sha256 "483318fcae1743d57eae68dbe9301dee7b0b62b5c27ca8dcff90299ca1612f26"
   license "MIT"
 
   depends_on "python@3.14"
